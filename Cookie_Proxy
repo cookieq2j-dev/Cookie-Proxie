@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Workspace Dashboard</title>
+    <link rel="icon" href="https://www.google.com/favicon.ico" type="image/x-icon">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #1a252f; color: #ffffff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        
+        header { background-color: #111a22; padding: 0.6rem 1rem; border-bottom: 1px solid #2c3e50; text-align: center; font-size: 0.9rem; color: #b4c6d8; font-weight: 500; position: relative; z-index: 10; }
+        
+        /* Main Container */
+        .browser-container { flex: 1; position: relative; width: 100%; height: 100%; z-index: 1; }
+        
+        /* App View Screens - Forced Viewport Layers */
+        .app-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; }
+        .active-screen { display: flex !important; }
+
+        /* Home Screen - Dark Gray with Moss Green Text */
+        #home-screen {
+            background-color: #1c1d1f !important; /* Dark Gray */
+            align-items: center;
+            justify-content: center;
+        }
+        .moss-title {
+            color: #106c38; /* Moss Green */
+            font-size: 5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            user-select: none;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.5);
+        }
+
+        /* Browser Wallpaper Landing View */
+        #browser-landing-screen { 
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            background-image: linear-gradient(rgba(255, 255, 0, 0.7), rgba(128, 0, 128, 1)), url('browserbg.jpeg'); 
+            background-size: cover; 
+            background-position: center; 
+            background-repeat: no-repeat; 
+            padding: 2rem; 
+            text-align: center; 
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Browser Layout Elements */
+        .tab-bar { display: flex; background-color: #111a22; padding: 0.5rem 0.5rem 0 0.5rem; width: 100%; }
+        .tab { background-color: #34495e; color: #ffffff; padding: 0.6rem 1.5rem; border-radius: 6px 6px 0 0; font-size: 0.85rem; border: none; font-weight: bold; border-bottom: 2px solid #a3e635; }
+        .address-bar-row { display: flex; background-color: #34495e; padding: 0.6rem; gap: 10px; align-items: center; width: 100%; }
+        .address-bar-row input { flex: 1; padding: 0.5rem 1.2rem; border-radius: 20px; border: none; background-color: #1a252f; color: white; font-size: 0.9rem; }
+        .address-bar-row input:focus { outline: 2px solid #a3e635; }
+        .go-btn { background-color: #a3e635; color: #111a22; border: none; padding: 0.5rem 1.5rem; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        
+        .browser-workspace { flex: 1; width: 100%; position: relative; background-color: #fff; }
+        .landing-content-wrapper { margin-top: -80px; width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; }
+        .proxie-title { color: #a3e635; font-size: 4rem; font-weight: 700; margin-bottom: 1.5rem; letter-spacing: 1px; text-shadow: 2px 2px 10px rgba(0,0,0,0.8); }
+        .landing-search-input { width: 100%; padding: 1rem 1.5rem; font-size: 1.1rem; background-color: rgba(20, 21, 24, 0.85); backdrop-filter: blur(4px); border: 1px solid #4a5568; border-radius: 30px; color: #e8eaed; outline: none; text-align: center; }
+
+        /* Embedded Frame Layer */
+        #content-frame { width: 100%; height: 100%; border: none; background-color: white; display: none; }
+
+        /* Absolute Priority Bottom Dock Tray Style */
+        .bottom-dock { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(17, 26, 34, 0.9); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 20px; display: flex; gap: 20px; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.7); z-index: 99999; }
+        .dock-item { position: relative; width: 50px; height: 50px; background-color: #2c3e50; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 1.5rem; user-select: none; }
+        .dock-item:hover { transform: scale(1.2) translateY(-5px); }
+        
+        .dock-item .tooltip { position: absolute; bottom: 65px; background-color: #111a22; color: #ffffff; padding: 5px 10px; font-size: 0.75rem; font-weight: bold; border-radius: 6px; white-space: nowrap; opacity: 0; visibility: hidden; transition: all 0.2s; pointer-events: none; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .dock-item .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 5px; border-style: solid; border-color: #111a22 transparent transparent transparent; }
+        .dock-item:hover .tooltip { opacity: 1; visibility: visible; }
+
+        .dock-item:nth-child(1):hover { background-color: #606c38; } 
+        .dock-item:nth-child(2):hover { background-color: #3498db; } 
+        .dock-item:nth-child(3):hover { background-color: #9b59b6; } 
+    </style>
+</head>
+<body>
+
+    <header>Cookie Proxie</header>
+
+    <div class="browser-container">
+
+        <!-- SCREEN 1: HOME APP SCREEN VIEW -->
+        <div id="home-screen" class="app-screen active-screen">
+            <div class="moss-title">Cookie Proxy</div>
+        </div>
+
+        <!-- SCREEN 2: BROWSER VIEW -->
+        <div id="browser-screen" class="app-screen">
+            <div class="tab-bar">
+                <button class="tab">Cookie Proxy</button>
+            </div>
+            <div class="address-bar-row">
+                <input type="text" id="address-input" placeholder="Enter a URL or search here...">
+                <button class="go-btn" id="go-btn">Go</button>
+            </div>
+            <div class="browser-workspace">
+                <!-- Static Landing Page Area -->
+                <div id="browser-landing-screen">
+                    <div class="landing-content-wrapper">
+                        <div class="proxie-title">Cookie Proxy</div>
+                        <div style="width:100%;">
+                            <input type="text" id="landing-search-input" class="landing-search-input" placeholder="Search...">
+                        </div>
+                    </div>
+                </div>
+                <!-- Dynamic Iframe Layer Container -->
+                <iframe id="content-frame"></iframe>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Floating Dock -->
+    <div class="bottom-dock">
+        <div class="dock-item" id="dock-home">🏠<span class="tooltip">Home</span></div>
+        <div class="dock-item" id="dock-browser">🌐<span class="tooltip">Browser</span></div>
+        <div class="dock-item">⚙️<span class="tooltip">Settings</span></div>
+    </div>
+
+    <!-- Script Interface Control Engine -->
+    <script>
+        const homeScreen = document.getElementById('home-screen');
+        const browserScreen = document.getElementById('browser-screen');
+        
+        const btnHome = document.getElementById('dock-home');
+        const btnBrowser = document.getElementById('dock-browser');
+
+        const addressInput = document.getElementById('address-input');
+        const landingInput = document.getElementById('landing-search-input');
+        const goBtn = document.getElementById('go-btn');
+        const browserLanding = document.getElementById('browser-landing-screen');
+        const contentFrame = document.getElementById('content-frame');
+
+        // Navigation tab switching logic
+        btnHome.addEventListener('click', function() {
+            browserScreen.classList.remove('active-screen');
+            homeScreen.classList.add('active-screen');
+        });
+
+        btnBrowser.addEventListener('click', function() {
+            homeScreen.classList.remove('active-screen');
+            browserScreen.classList.add('active-screen');
+        });
+
+        // Function to process and resolve destination strings
+        function navigateTo(target) {
+            if (!target.trim()) return;
+            
+            let url = target.trim();
+            // Automatically format search queries vs direct domains
+            if (!url.includes('.') || url.includes(' ')) {
+                url = 'https://google.com/' + encodeURIComponent(url);
+            } else if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+
+            // Synchronize the text outputs
+            addressInput.value = url;
+            
+            // Toggle view visibilities and commit the frame target
+            browserLanding.style.display = 'none';
+            contentFrame.style.display = 'block';
+            contentFrame.src = url;
+        }
+
+        // Action binding listeners
+        goBtn.addEventListener('click', () => navigateTo(addressInput.value));
+        
+        addressInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') navigateTo(addressInput.value);
+        });
+
+        landingInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') navigateTo(landingInput.value);
+        });
+    </script>
+
+</body>
+</html>
